@@ -1,0 +1,129 @@
+---
+- name: Install exporters on app server
+  hosts: app
+  become: true
+
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - docker.io
+        state: present
+        update_cache: true
+
+    - name: Enable Docker
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Run node_exporter
+      ansible.builtin.shell: |
+        docker rm -f node-exporter || true
+        docker run -d \
+          --name node-exporter \
+          --restart unless-stopped \
+          --net="host" \
+          --pid="host" \
+          -v "/:/host:ro,rslave" \
+          quay.io/prometheus/node-exporter:latest \
+          --path.rootfs=/host
+      changed_when: true
+
+    - name: Run cAdvisor
+      ansible.builtin.shell: |
+        docker rm -f cadvisor || true
+        docker run -d \
+          --name cadvisor \
+          --restart unless-stopped \
+          -p 8080:8080 \
+          -v /:/rootfs:ro \
+          -v /var/run:/var/run:rw \
+          -v /sys:/sys:ro \
+          -v /var/lib/docker/:/var/lib/docker:ro \
+          gcr.io/cadvisor/cadvisor:latest
+      changed_when: true
+
+
+- name: Install Prometheus and Grafana
+  hosts: monitoring
+  become: true
+
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - python3-pip
+        state: present
+        update_cache: true
+
+    - name: Enable Docker
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Create monitoring directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /opt/monitoring/prometheus
+        - /opt/monitoring/grafana/provisioning/datasources
+        - /opt/monitoring/grafana/provisioning/dashboards
+        - /opt/monitoring/grafana/dashboards
+
+    - name: Copy prometheus config
+      ansible.builtin.template:
+        src: templates/prometheus.yml.j2
+        dest: /opt/monitoring/prometheus/prometheus.yml
+        mode: "0644"
+
+    - name: Copy Grafana datasource
+      ansible.builtin.copy:
+        src: files/grafana/provisioning/datasources/prometheus.yml
+        dest: /opt/monitoring/grafana/provisioning/datasources/prometheus.yml
+        mode: "0644"
+
+    - name: Copy Grafana dashboard provider
+      ansible.builtin.copy:
+        src: files/grafana/provisioning/dashboards/dashboards.yml
+        dest: /opt/monitoring/grafana/provisioning/dashboards/dashboards.yml
+        mode: "0644"
+
+    - name: Copy Grafana dashboard
+      ansible.builtin.copy:
+        src: files/grafana/dashboards/instahelper-overview.json
+        dest: /opt/monitoring/grafana/dashboards/instahelper-overview.json
+        mode: "0644"
+
+    - name: Create Docker network
+      ansible.builtin.shell: docker network create monitoring || true
+      changed_when: false
+
+    - name: Run Prometheus
+      ansible.builtin.shell: |
+        docker rm -f prometheus || true
+        docker run -d \
+          --name prometheus \
+          --restart unless-stopped \
+          --network monitoring \
+          -p 9090:9090 \
+          -v /opt/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
+          prom/prometheus:latest
+      changed_when: true
+
+    - name: Run Grafana
+      ansible.builtin.shell: |
+        docker rm -f grafana || true
+        docker run -d \
+          --name grafana \
+          --restart unless-stopped \
+          --network monitoring \
+          -p 3000:3000 \
+          -v /opt/monitoring/grafana/provisioning:/etc/grafana/provisioning \
+          -v /opt/monitoring/grafana/dashboards:/var/lib/grafana/dashboards \
+          grafana/grafana-oss:latest
+      changed_when: true

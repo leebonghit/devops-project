@@ -1,0 +1,54 @@
+{
+  "uid": "instahelper-overview",
+  "title": "Instahelper UAT Overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Targets UP",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "up",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "App Server CPU Load",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "node_load1",
+          "legendFormat": "load1"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Memory Available",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "node_memory_MemAvailable_bytes",
+          "legendFormat": "available memory"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Running Containers",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "count(container_last_seen{name!=\"\"})",
+          "legendFormat": "containers"
+        }
+      ]
+    }
+  ]
+}
