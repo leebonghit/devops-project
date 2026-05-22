@@ -1,0 +1,41 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  APP_HOST: "51.250.13.181"
+
+build:
+  stage: build
+  tags:
+    - shell
+  script:
+    - echo "Build stage"
+    - docker --version
+
+test:
+  stage: test
+  tags:
+    - shell
+  script:
+    - echo "Test stage"
+    - docker ps
+
+deploy:
+  stage: deploy
+  tags:
+    - shell
+  before_script:
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan -H $APP_HOST >> ~/.ssh/known_hosts
+
+  script:
+    - echo "Deploy stage"
+    - ssh ubuntu@$APP_HOST "docker ps"
+
+  only:
+    - master
+    - uat
