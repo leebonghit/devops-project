@@ -1,14 +1,15 @@
 ---
 - name: Deploy Docker service
-  hosts: app
+  hosts: "{{ deploy_target }}"
   become: true
 
   vars:
+    deploy_target: uat
     service_name: instahelper-service
-    docker_image: nginx
-    docker_tag: alpine
+    docker_image: skillbox/app
+    docker_tag: latest
     service_port: 80
-    container_port: 80
+    container_port: 8080
 
   tasks:
     - name: Copy systemd unit file

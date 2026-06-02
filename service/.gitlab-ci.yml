@@ -1,0 +1,77 @@
+stages:
+  - build
+  - test
+  - deploy_uat
+  - deploy_prod
+
+variables:
+  UAT_HOST: "62.84.114.4"
+  PROD_HOST: "51.250.67.107"
+  SERVICE_NAME: "instahelper-service"
+  DOCKER_IMAGE: "skillbox/app"
+  DOCKER_TAG: "$CI_COMMIT_SHORT_SHA"
+
+build:
+  stage: build
+  tags:
+    - shell
+  script:
+    - cd Final_project
+    - docker build . -t $DOCKER_IMAGE:$DOCKER_TAG
+    - docker image ls $DOCKER_IMAGE:$DOCKER_TAG
+
+test:
+  stage: test
+  tags:
+    - shell
+  script:
+    - cd Final_project
+    - chmod +x run-tests.sh
+    - chmod +x scripts/*.sh
+    - ./run-tests.sh
+
+deploy_uat:
+  stage: deploy_uat
+  tags:
+    - shell
+  before_script:
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan -H $UAT_HOST >> ~/.ssh/known_hosts
+  script:
+    - docker save $DOCKER_IMAGE:$DOCKER_TAG -o /tmp/skillbox-app-$DOCKER_TAG.tar
+    - scp /tmp/skillbox-app-$DOCKER_TAG.tar ubuntu@$UAT_HOST:/tmp/
+    - ssh ubuntu@$UAT_HOST "docker load -i /tmp/skillbox-app-$DOCKER_TAG.tar"
+    - ansible-playbook -i ansible/inventory.ini ansible/deploy.yml
+      -e deploy_target=uat
+      -e service_name=$SERVICE_NAME
+      -e docker_image=$DOCKER_IMAGE
+      -e docker_tag=$DOCKER_TAG
+      -e service_port=80
+      -e container_port=8080
+  only:
+    - master
+    - uat
+
+deploy_prod:
+  stage: deploy_prod
+  tags:
+    - shell
+  before_script:
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan -H $PROD_HOST >> ~/.ssh/known_hosts
+  script:
+    - scp /tmp/skillbox-app-$DOCKER_TAG.tar ubuntu@$PROD_HOST:/tmp/
+    - ssh ubuntu@$PROD_HOST "docker load -i /tmp/skillbox-app-$DOCKER_TAG.tar"
+    - ansible-playbook -i ansible/inventory.ini ansible/deploy.yml
+      -e deploy_target=prod
+      -e service_name=$SERVICE_NAME
+      -e docker_image=$DOCKER_IMAGE
+      -e docker_tag=$DOCKER_TAG
+      -e service_port=80
+      -e container_port=8080
+  only:
+    - master

@@ -1,0 +1,74 @@
+---
+- name: Install Loki on monitoring host
+  hosts: monitoring
+  become: true
+
+  tasks:
+    - name: Create Loki directory
+      ansible.builtin.file:
+        path: /opt/logging/loki
+        state: directory
+        mode: "0755"
+
+    - name: Copy Loki config
+      ansible.builtin.template:
+        src: templates/loki-config.yml.j2
+        dest: /opt/logging/loki/loki-config.yml
+        mode: "0644"
+
+    - name: Run Loki
+      ansible.builtin.shell: |
+        docker rm -f loki || true
+        docker network create monitoring || true
+        docker run -d \
+          --name loki \
+          --restart unless-stopped \
+          --network monitoring \
+          -p 3100:3100 \
+          -v /opt/logging/loki/loki-config.yml:/etc/loki/local-config.yaml:ro \
+          grafana/loki:latest \
+          -config.file=/etc/loki/local-config.yaml
+      changed_when: true
+
+    - name: Copy Loki datasource to Grafana
+      ansible.builtin.copy:
+        src: files/grafana/provisioning/datasources/loki.yml
+        dest: /opt/monitoring/grafana/provisioning/datasources/loki.yml
+        mode: "0644"
+
+    - name: Restart Grafana
+      ansible.builtin.shell: docker restart grafana
+      changed_when: true
+
+
+- name: Install Promtail on application hosts
+  hosts: app:prod
+  become: true
+
+  tasks:
+    - name: Create Promtail directory
+      ansible.builtin.file:
+        path: /opt/logging/promtail
+        state: directory
+        mode: "0755"
+
+    - name: Copy Promtail config for UAT
+      ansible.builtin.template:
+        src: templates/promtail-config.yml.j2
+        dest: /opt/logging/promtail/promtail-config.yml
+        mode: "0644"
+      vars:
+        log_env: "{{ 'prod' if inventory_hostname == 'prod-app' else 'uat' }}"
+
+    - name: Run Promtail
+      ansible.builtin.shell: |
+        docker rm -f promtail || true
+        docker run -d \
+          --name promtail \
+          --restart unless-stopped \
+          -v /opt/logging/promtail/promtail-config.yml:/etc/promtail/config.yml:ro \
+          -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          grafana/promtail:latest \
+          -config.file=/etc/promtail/config.yml
+      changed_when: true

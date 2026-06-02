@@ -17,7 +17,7 @@ resource "yandex_compute_instance" "runner" {
   }
 
   network_interface {
-    subnet_id = "e9bav06350k91d444lf9"
+    subnet_id = "e9ba9akvqha3i2s6if0e"
     nat       = true
   }
 

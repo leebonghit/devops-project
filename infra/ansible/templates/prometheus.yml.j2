@@ -9,18 +9,34 @@ scrape_configs:
         labels:
           env: "uat"
 
-  - job_name: "node-exporter"
+  - job_name: "node-exporter-uat"
     static_configs:
       - targets:
-          - "192.168.10.10:9100"
+          - "10.128.0.32:9100"
         labels:
           env: "uat"
           service: "app-server"
 
-  - job_name: "cadvisor"
+  - job_name: "cadvisor-uat"
     static_configs:
       - targets:
-          - "192.168.10.10:8080"
+          - "10.128.0.32:8080"
         labels:
           env: "uat"
+          service: "docker"
+
+  - job_name: "node-exporter-prod"
+    static_configs:
+      - targets:
+          - "10.128.0.14:9100"
+        labels:
+          env: "prod"
+          service: "app-server"
+
+  - job_name: "cadvisor-prod"
+    static_configs:
+      - targets:
+          - "10.128.0.14:8080"
+        labels:
+          env: "prod"
           service: "docker"

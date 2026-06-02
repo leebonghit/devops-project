@@ -1,6 +1,6 @@
 ---
 - name: Install exporters on app server
-  hosts: app
+  hosts: app:prod
   become: true
 
   tasks:

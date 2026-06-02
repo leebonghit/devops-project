@@ -17,7 +17,7 @@ resource "yandex_compute_instance" "app" {
   }
 
   network_interface {
-    subnet_id = "e9bav06350k91d444lf9"
+    subnet_id = "e9ba9akvqha3i2s6if0e"
     nat       = true
   }
 
@@ -30,7 +30,7 @@ resource "yandex_lb_target_group" "app" {
   name = "instahelper-target-group"
 
   target {
-    subnet_id = "e9bav06350k91d444lf9"
+    subnet_id = "e9ba9akvqha3i2s6if0e"
     address   = yandex_compute_instance.app.network_interface[0].ip_address
   }
 }

@@ -8,7 +8,6 @@ Restart=always
 RestartSec=5
 
 ExecStartPre=-/usr/bin/docker rm -f {{ service_name }}
-ExecStartPre=/usr/bin/docker pull {{ docker_image }}:{{ docker_tag }}
 
 ExecStart=/usr/bin/docker run \
   --name {{ service_name }} \
